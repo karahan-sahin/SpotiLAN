@@ -25,7 +25,7 @@ class SpotiLAN():
         self.playList = []
 
     ###########################
-    # INITIAL COMPONENTS/EVENTS
+    # INITIALIZATION EVENTS
     ###########################
 
     def initSession(self):
@@ -158,11 +158,11 @@ class SpotiLAN():
         with st.sidebar:
             col1, col2,  = st.columns([3,1])
             col1.write("User 1")
-            col2.write("OFFLINE")
+            col2.write("🟢")
             
             col3, col4,  = st.columns([3,1])
             col3.write("User 2")
-            col4.write("OFFLINE")
+            col4.write("🔴")
 
 if __name__ == "__main__":
     
