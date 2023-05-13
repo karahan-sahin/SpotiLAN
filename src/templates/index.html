@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport">
+    <title> SpotiLAN </title>
+    <link href="static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap"
+          rel="stylesheet">
+    <link href="static/fonts/fontawesome-all.min.css" rel="stylesheet">
+    <style>
+        #content {
+            background-size: cover;
+            background: rgb(201, 147, 10) no-repeat center;
+        }
+
+        .center-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        footer {
+            background-color: rgba(210, 153, 10, 0.98) !important;
+            position: fixed;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+
+        body {
+            background: #f8ba00;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-group-transparent {
+            background-color: transparent;
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+        }
+
+        .list-group-transparent li {
+            color: #2d2e33;
+            background-color: transparent;
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            font-weight: bold;
+            font-family: "Arial", sans-serif;
+            /* Additional styles for a modern look */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #ff0000; /* Example color change on hover */
+        }
+    </style>
+</head>
+
+<body>
+<div id="wrapper">
+    <!--        Sidebar          -->
+    <nav class="navbar navbar-dark align-items-start sidebar accordion"
+         style="background: #48ab89; border-top-right-radius: 60px; border-bottom-right-radius: 60px; width: 200px; float: right; border: 2px solid #f5f5f5; border-right: None">
+        <div class="container-fluid d-flex flex-column p-0">
+            <a class="navbar-brand d-flex justify-content-center align-items-center sidebar-brand m-0">
+                <div class="sidebar-brand-icon" style="position: relative; top: 20px">
+                    <img src="static/logo/spotilan-high-resolution-logo-color-on-transparent-background.png"
+                         width="100">
+                </div>
+            </a>
+            <a class="d-none d-lg-inline mr-2 text-black-50 disabled"
+               style="position: relative; padding-top: 40px;"><strong>Valerie
+                Luna</strong></a>
+            <hr class="sidebar-divider my-0">
+            <div class="container-fluid" id="host-list-container">
+                <ul class="list-group-transparent rounded" id="host-list" style="position: relative;">
+                    {% for host in host_list %}
+                    <li class="list-group-item">{{ host }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="text-center d-none d-md-inline"></div>
+        </div>
+    </nav>
+    <!--        Content-->
+    <div class="d-flex flex-column" id="content-wrapper"
+         style="border-radius: 25px; border: 1.5px solid #f5f5f5; box-shadow: 0px 0px 10px rgba(128, 128, 128, 0.5);">
+        <!-- Content goes here -->
+        <div id="content">
+            <ul class="nav nav-tabs justify-content-center">
+                <li class="nav-item">
+                    <a aria-controls="search" aria-selected="true" class="nav-link active" data-bs-toggle="tab"
+                       href="#search"
+                       id="search-tab" role="tab">Search</a>
+                </li>
+                <li class="nav-item">
+                    <a aria-controls="queue" aria-selected="false" class="nav-link" data-bs-toggle="tab" href="#queue"
+                       id="queue-tab"
+                       role="tab">Queue</a>
+                </li>
+                <li class="nav-item">
+                    <a aria-controls="songs" aria-selected="false" class="nav-link" data-bs-toggle="tab"
+                       href="#songs"
+                       id="songs-tab" role="tab">Playlist</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div aria-labelledby="search-tab" class="tab-pane fade show active" id="search" role="tabpanel">
+                    <!-- Content of Search page -->
+                    <h3>Search Page</h3>
+                    <p>This is the content of the Search page.</p>
+                </div>
+                <div aria-labelledby="queue-tab" class="tab-pane fade" id="queue" role="tabpanel">
+                    <!-- Content of Queue page -->
+                    <h3>Queue Page</h3>
+                    <p>This is the content of the Queue page.</p>
+                </div>
+                <div aria-labelledby="songs-tab" class="tab-pane fade" id="songs" role="tabpanel">
+                    <!-- Content of Playlist page -->
+                    <h3 style="color: black">Playlist Page</h3>
+                    <p>This is the content of the Playlist page.</p>
+                    <div class="row" style="padding-top: 10px"></div>
+                    <div class="container-fluid" id="song-list-container">
+                        <!-- Song list -->
+                        {% for song in song_list %}
+                        <div class="col-md-12 mb-4" style="height: 5rem;">
+                            <div class="card h-25 rounded p-3" style="height: 5rem;">
+                                <div class="card-body" style="height: 5rem;">
+                                    <h5 class="card-title">{{ song }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid" style="padding-bottom: 100px;"></div>
+        <!--        footer-->
+        <footer class="sticky-footer"
+                style="border: 0.5px solid  #f5f5f5; border-bottom: None; border-left: None; border-right: None;">
+            <div class="container my-auto">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="center-content">
+                            <div aria-label="Audio Player" class="btn-group" role="group" style="width: 500px;">
+                                <button class="btn btn-secondary" id="previous-btn" type="button">
+                                    <img alt="Backward Icon" height="25" src="static/icon/backward.svg" width="50">
+                                </button>
+                                <button class="btn btn-secondary" id="play-btn" type="button">
+                                    <img alt="Start Icon" height="25" src="static/icon/play.svg" width="50">
+                                </button>
+                                <button class="btn btn-secondary" id="pause-btn" type="button">
+                                    <img alt="Stop Icon" height="25" src="static/icon/pause.svg" width="50">
+                                </button>
+                                <button class="btn btn-secondary" id="next-btn" type="button">
+                                    <img alt="Forward Icon" height="25" src="static/icon/forward.svg" width="50">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+<script crossorigin="anonymous"
+        integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW"
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
