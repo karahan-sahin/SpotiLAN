@@ -4,6 +4,7 @@ import json
 import base64
 import flask
 import time
+import numpy as np
 from src.utils.client import Client
 
 
@@ -63,18 +64,20 @@ def process_tcp_msg(
         # START CURRENT SONG
         with client.lock:
             agreed_time = msg.get("timestamp")
+            song_id = msg.get("id")
+            song_name = msg.get("title")
+            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
             while True:
-                if time.perf_counter_ns() + flask.g.client.peer.get("delay") >= agreed_time:
-                    song_id = msg.get("id")
-                    song_name = msg.get("title")
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
                     flask.g.player.start(song_id, song_name)
                     break    
                         
     elif msg["type"] == "stop":
         with client.lock:
             agreed_time = msg.get("timestamp")
+            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
             while True:
-                if time.perf_counter_ns() + flask.g.client.peer.get("delay") >= agreed_time:
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
                     song_id = msg.get("id")
                     song_name = msg.get("title")
                     flask.g.player.stop(song_id, song_name)
@@ -89,9 +92,10 @@ def process_tcp_msg(
     
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
-        delay = -(time.perf_counter_ns() - timestamp)
+        delay = time.perf_counter_ns() - timestamp
         flask.g.client.peer["delay"].append(delay)
-        flask.g.client.peer["sync"] = True
+        with flask.g.client.lock:
+            flask.g.client.peer["sync"] = True
     
     else:
         raise Exception(f"Invalid message type {msg.get('type')}")
