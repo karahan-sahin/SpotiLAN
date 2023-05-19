@@ -3,6 +3,7 @@ import json
 import os
 import time
 import socket
+import flask
 import select
 import threading
 import concurrent.futures
@@ -10,10 +11,13 @@ import concurrent.futures
 from src.app import app, set_params
 from src.configs import config
 from src.utils.client import Client
-from src.messages.messages import send_message_tcp, send_message_udp, process_tcp_msg, process_udp_msg
+from src.utils.search import Searcher
+from src.utils.audio_player import AudioPlayer
+from src.utils.messages import send_message_tcp, send_message_udp, process_tcp_msg, process_udp_msg
 
 # Initialize global variables
 client: Client
+player: AudioPlayer
 
 # Create a thread pool with a maximum of 10 threads
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.THREAD_POOL_SIZE)
@@ -129,27 +133,53 @@ def prompt() -> None:
                     send_message_tcp(to=target_ip, msg=message, port=config.PORT)
         else:
             print("This person does not exists!")
+            
 
+def sync() -> None:
+    """
+    Constantly sending <SYNC> object
+    
+    TODO: Add turn flag
+    """
+    while flask.g.client.peer.get("sync"):
+        target_ip = flask.g.client.peer.get("ip")
+        message = {
+            "type": "sync",
+            "timestamp": time.perf_counter_ns(),
+        }
+        send_message_tcp(to=target_ip, msg=message, port=config.PORT)
+        with flask.g.client.lock:
+            flask.g.client.peer["sync"] = False       
+            
+   
+def player(action) -> None:
+    """
+    Chat prompt handler
+    """
+    pass
+
+    
+    
+app = flask.Flask(__name__)
 
 if __name__ == '__main__':
-    # Set the myname
-    # while True:
-    #     myname = input("Name: ").strip()
-    #     if myname.isalnum():
-    #         client = Client(myname=myname)
-    #         print(f"Welcome {client.myname}")
-    #         break
-    #     else:
-    #         print("Please enter a valid name!")
-    #
+    
     client = Client(myname="daglar")
+    flask.g.update({"client": client})
+    
+    player = AudioPlayer()
+    flask.g.update({"player": player})
+    
+    search = Searcher()
+    flask.g.update({"search": search})
+    
     # Create threads
     threading.Thread(target=udp_broadcaster, args=()).start()  # udp broadcaster
     threading.Thread(target=udp_listener, args=()).start()  # udp listener
-    threading.Thread(target=tcp_listener, args=()).start()  # tcp listener
+    threading.Thread(target=tcp_listener(config.MSG_PORT), args=()).start()  # message listener
+    threading.Thread(target=tcp_listener(config.SYNC_PORT), args=()).start()  # sync listener
+    threading.Thread(target=sync, args=()).start()  # sync listener
     threading.Thread(target=clear_cache, args=()).start()  # clear cache
 
     # Flask app
-
-    set_params(c=client)
     app.run()
