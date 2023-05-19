@@ -6,6 +6,7 @@ from src.configs import config
 from src.main import app
 import time
 
+
 search = Searcher()
 
 def action(action_type):
@@ -25,6 +26,7 @@ def action(action_type):
 def home():
     # if client.name:
     return render_template('index.html', song_list=["1", "2", "3", "4"])
+
 
 @app.route('/api/audio', methods=['POST'])
 def handle_request():
@@ -81,13 +83,13 @@ def search_song():
     data = request.get_json()
     query = data.get('query')
     search_results = search.searchSong(query, topN=5)
-    response = {'search_results': search_results}
-    return response, 200
+    return jsonify({'search-results': search_results})
+
 
 @app.route('/api/download', methods=['POST'])
 def download_song():
     data = request.get_json()
     url = data.get('url')
-    status = search.downloadSong(url)   
+    status = search.downloadSong(url, './musics/')
     response = {'message': status}
     return response, 200
