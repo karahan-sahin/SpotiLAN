@@ -1,33 +1,93 @@
-import simpleaudio as sa
+import time
+import multiprocessing
+from pydub import AudioSegment, playback
 
+
+def wait(duration): time.sleep(duration)
 class AudioPlayer:
-    def __init__(self, filename):
-        self.filename = filename
-        self.wave_obj = sa.WaveObject.from_mp3_file(filename)
-        self.play_obj = None
+
+    def __init__(self):
+        self.queue = []
+        self.audio_file = ""
+        self.current_idx = 0
+        self.is_playing = None
+        self.playback = None
 
     def play(self):
-        self.play_obj = self.wave_obj.play()
-
-    def stop(self):
-        if self.play_obj:
-            self.play_obj.stop()
-
-    def is_playing(self):
-        if self.play_obj:
-            return self.play_obj.is_playing()
+        if not self.is_playing:
+            if not self.audio_file: self.audio_file = self.queue[0]
+            
+            self.audio_segment = AudioSegment.from_file(self.audio_file)
+            print("Playing...", self.audio_file, f"{self.queue=}")
+            self.playback = playback._play_with_simpleaudio(self.audio_segment)
+            self.is_playing = True
+            
+            self.process = multiprocessing.Process(target=wait, args=(self.audio_segment.duration_seconds,))
+            self.process.start()
+            
+    def next_song(self):
+        print("Terminating.....")
+        self.process.terminate()
+        self.playback.stop()
+        self.is_playing = False
+        if self.current_idx < len(self.queue)-1:
+            self.current_idx += 1
+            self.audio_file = self.queue[self.current_idx]
+            self.play()
+            print("Playing from queue...")
         else:
-            return False
+            print("No more songs left ahead....")
+            
+    def previous_song(self):
+        self.process.terminate()
+        self.playback.stop()
+        self.is_playing = False
+        if self.current_idx > 0:
+            self.current_idx -= 1
+            self.audio_file = self.queue[self.current_idx]
+            self.play()
+        else:
+            print("No more songs left behind....")
+            
+    def stop(self):
+        self.playing.terminate()
 
-    def wait_done(self):
-        if self.play_obj:
-            self.play_obj.wait_done()
+    def set_volume(self, volume):
+        self.audio_segment.set_volume(volume)
+
+    def add_to_queue(self, audio_file):
+        self.queue.append(audio_file)
 
 
 if __name__ == "__main__":
-    player = AudioPlayer("audio.mp3")
+
+    player = AudioPlayer()
+    player.add_to_queue("musics/shape_of_my_heart.mp3")
+    player.add_to_queue("musics/down_from_the_sky.mp3")
+
     player.play()
-
-    # Do something else while the audio is playing
-
-    player.stop()
+    time.sleep(1)
+    
+    player.next_song()
+    print(player.current_idx)
+    time.sleep(1)
+    
+    player.previous_song()
+    print(player.current_idx)
+    time.sleep(1)
+    
+    player.previous_song()
+    print(player.current_idx)
+    time.sleep(1)
+    
+    player.next_song()
+    print(player.current_idx)
+    time.sleep(1)
+    
+    player.next_song()
+    print(player.current_idx)
+    time.sleep(1)
+    print(player.current_idx)
+    player.next_song()
+    
+    
