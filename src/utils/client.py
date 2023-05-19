@@ -1,8 +1,12 @@
 import subprocess
 import re
+import time
 from typing import Dict
 import threading
 import platform
+
+from src.configs import config
+from src.main import send_message_tcp
 
 
 class Client:
@@ -56,9 +60,9 @@ class Client:
         :param ip: private ip of the host
         :param name: name of the host
         """
-        if self.__known_hosts.get(name) == ip:
+        if self.__known_hosts.get(name).get("ip") == ip:
             return
-        self.__known_hosts[name] = ip
+        self.__known_hosts[name] = { "ip": ip, "delay": [], "sync": True }
         print(f'Known hosts are {list(self.known_hosts.keys())}')
 
     def clear_known_hosts(self) -> None:
@@ -66,6 +70,22 @@ class Client:
         Clear the known hosts dict
         """
         self.__known_hosts = dict()
+        
+    def run_player_action(self, msg_type: str, current_song: str, action: function):
+        """
+        Send player action
+        :param ip: private ip of the host
+        :param name: name of the host
+        """
+        self.peer = list(self.__known_hosts.keys())[0] if self.__known_hosts else None
+        if self.peer:
+            agreed_time =  time.perf_counter_ns() + config.DELAY
+            msg = {"type": msg_type, "name": current_song, "timestamp": agreed_time }
+            send_message_tcp(to=self._known_hosts[self.peer]["ip"], msg=msg, port=config.PORT)
+        while True:
+            if time.perf_counter_ns() >= agreed_time:
+                action()
+                break
 
     @staticmethod
     def __get_private_ip__() -> str:
