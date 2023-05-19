@@ -1,6 +1,9 @@
+import os
+
 from flask import Flask, render_template, request, jsonify, current_app
 from src.utils.search import Searcher
-#from src.utils.audio_player import AudioPlayer
+
+# from src.utils.audio_player import AudioPlayer
 
 app = Flask(__name__)
 client = None
@@ -15,6 +18,7 @@ def set_params(c, **kwargs):
 def home():
     # if client.name:
     return render_template('index.html', song_list=["1", "2", "3", "4"])
+
 
 @app.route('/api/audio', methods=['POST'])
 def handle_request():
@@ -53,13 +57,13 @@ def search_song():
     query = data.get('query')
     search_results = search.searchSong(query, topN=5)
     print(search_results)
-    response = {'search_results': search_results}
-    return response, 200
+    return jsonify({'search-results': search_results})
+
 
 @app.route('/api/download', methods=['POST'])
 def download_song():
     data = request.get_json()
     url = data.get('url')
-    status = search.downloadSong(url)   
+    status = search.downloadSong(url, './musics/')
     response = {'message': status}
     return response, 200
