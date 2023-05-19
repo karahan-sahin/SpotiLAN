@@ -118,7 +118,26 @@
                 <div aria-labelledby="search-tab" class="tab-pane fade show active" id="search" role="tabpanel">
                     <!-- Content of Search page -->
                     <h3>Search Page</h3>
-                    <p>This is the content of the Search page.</p>
+                    <form>
+                        <div class="form-group">
+                          <input class="form-control" id="search-bar" placeholder="Search a song or artist" style="margin: auto; width: 88%;">
+                          <button type="button" id="search-btn" class="btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                    <div class="row" style="padding-top: 10px"></div>
+                    <div class="container-fluid" id="search-results-container">
+                        <!-- Song list -->
+                        {% for song in search_results %}
+                        <div class="col-md-12 mb-4" style="height: 5rem;">
+                            <div class="card h-25 rounded p-3" style="height: 5rem;">
+                                <div class="card-body" style="height: 5rem;">
+                                    <h5 class="card-title">{{ song }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
                 </div>
                 <div aria-labelledby="queue-tab" class="tab-pane fade" id="queue" role="tabpanel">
                     <!-- Content of Queue page -->

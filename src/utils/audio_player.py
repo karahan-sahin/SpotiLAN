@@ -39,31 +39,32 @@ class AudioPlayer:
         self.playlist = queue.Queue()
 
 
-# Usage example
-audio_player = AudioPlayer()
+if __name__ == '__main__':
+    # Usage example
+    audio_player = AudioPlayer()
 
-# Add songs to the playlist
-audio_player.add_to_playlist("path/to/audio/song1.mp3")
-audio_player.add_to_playlist("path/to/audio/song2.mp3")
-audio_player.add_to_playlist("path/to/audio/song3.mp3")
+    # Add songs to the playlist
+    audio_player.add_to_playlist("path/to/audio/song1.mp3")
+    audio_player.add_to_playlist("path/to/audio/song2.mp3")
+    audio_player.add_to_playlist("path/to/audio/song3.mp3")
 
-# Start playing the playlist
-audio_player.play()
+    # Start playing the playlist
+    audio_player.play()
 
-# Wait for song to finish
-while audio_player.is_playing():
-    pass
+    # Wait for song to finish
+    while audio_player.is_playing():
+        pass
 
-# Add more songs to the playlist
-audio_player.add_to_playlist("path/to/audio/song4.mp3")
-audio_player.add_to_playlist("path/to/audio/song5.mp3")
+    # Add more songs to the playlist
+    audio_player.add_to_playlist("path/to/audio/song4.mp3")
+    audio_player.add_to_playlist("path/to/audio/song5.mp3")
 
-# Start playing the updated playlist
-audio_player.play()
+    # Start playing the updated playlist
+    audio_player.play()
 
-# Wait for song to finish
-while audio_player.is_playing():
-    pass
+    # Wait for song to finish
+    while audio_player.is_playing():
+        pass
 
-# Clear the playlist
-audio_player.clear_playlist()
+    # Clear the playlist
+    audio_player.clear_playlist()

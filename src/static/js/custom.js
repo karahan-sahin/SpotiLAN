@@ -2,6 +2,7 @@ var previousBtn = document.getElementById('previous-btn');
 var playBtn = document.getElementById('play-btn');
 var pauseBtn = document.getElementById('pause-btn');
 var nextBtn = document.getElementById('next-btn');
+var searchBtn = document.getElementById('search-btn');
 
 // Function to update the song list
 function updateSongList() {
@@ -101,6 +102,51 @@ function sendRequest(action) {
         .then(function (data) {
             console.log(data);
             // Handle response data if needed
+        })
+        .catch(function (error) {
+            console.log(error);
+            // Handle error if needed
+        });
+}
+
+searchBtn.addEventListener('click', function () {
+    updateSearchResults();
+});
+
+// Function to update the search results
+function updateSearchResults() {
+        console.log("Sending request...");
+        fetch('http://127.0.0.1:5000/api/search', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({"query": document.getElementById("search-bar")})
+        })
+        .then(function (response) {
+            console.log(response)
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Request failed.');
+        })
+        .then(function (data) {
+            var songListContainer = document.getElementById('search-results');
+            songListContainer.innerHTML = '';
+
+            data.search_results.forEach(function (song) {
+                var songCard = `
+                        <div class="col-md-12 mb-4" style="padding-top: 5px">
+                            <div class="card h-100 rounded p-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">${song.title}</h5>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                songListContainer.innerHTML += songCard;
+            });
         })
         .catch(function (error) {
             console.log(error);
