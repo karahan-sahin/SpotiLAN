@@ -2,7 +2,9 @@
 import socket
 import json
 import base64
-
+import flask
+import time
+import numpy as np
 from src.utils.client import Client
 
 
@@ -57,14 +59,44 @@ def process_tcp_msg(
             idx = list(client.known_hosts.values()).index(host)
             name = list(client.known_hosts.keys())[idx]
         print(f"from {name} : {msg.get('content')}")
-    elif msg["type"] == "strat":
-        pass  # START CURRENT SONG
+    
+    elif msg["type"] == "start":
+        # START CURRENT SONG
+        with client.lock:
+            agreed_time = msg.get("timestamp")
+            song_id = msg.get("id")
+            song_name = msg.get("title")
+            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
+            while True:
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
+                    flask.g.player.start(song_id, song_name)
+                    break    
+                        
     elif msg["type"] == "stop":
-        pass  # STOP CURRENT SONG
-    elif msg["type"] == "change":
-        pass  # CHANGE SONG AT PLAYLIST
+        with client.lock:
+            agreed_time = msg.get("timestamp")
+            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
+            while True:
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
+                    song_id = msg.get("id")
+                    song_name = msg.get("title")
+                    flask.g.player.stop(song_id, song_name)
+                    break       
+                
     elif msg["type"] == "add":
-        pass  # ADD SONGS TO PLAYLIST
+        song_id = msg.get("id")
+        song_name = msg.get("title")
+        url = msg.get("link")
+        flask.g.search.downloadSong(url, "./musics/")
+        flask.g.player.add(song_id, song_name)    
+    
+    elif msg["type"] == "sync":
+        timestamp = msg.get("timestamp")
+        delay = time.perf_counter_ns() - timestamp
+        flask.g.client.peer["delay"].append(delay)
+        with flask.g.client.lock:
+            flask.g.client.peer["sync"] = True
+    
     else:
         raise Exception(f"Invalid message type {msg.get('type')}")
 
