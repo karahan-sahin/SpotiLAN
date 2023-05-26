@@ -3,11 +3,11 @@ from flask import render_template, request, jsonify
 from src.utils.search import Searcher
 from src.utils.messages import send_message_tcp
 from src.configs import config
-from src.main import app
+from src.main import app, client
 import time
 
-
 search = Searcher()
+
 
 def action(action_type):
     # calculate delay time + send package
@@ -16,11 +16,12 @@ def action(action_type):
     send_message_tcp(to=flask.g.client.peer.get("ip"), msg={"type": action_type,
                                                             "song": flask.g.player.current_song,
                                                             "timestamp": agreed_time}, port=config.PORT)
-    
+
     player_action = flask.g.player.start if action_type == "start" else flask.g.player.stop
     while True:
         if time.perf_counter_ns() >= agreed_time:
             player_action()
+
 
 @app.route('/', methods=['GET'])
 def home():
@@ -32,12 +33,12 @@ def home():
 def handle_request():
     data = request.get_json()
     action = data.get('action')
-    
+
     # Perform actions based on the received action
     if action == 'play':
         action("start")
     elif action == 'pause':
-        action("stop")      
+        action("stop")
     elif action == 'next':
         action("stop")
         flask.g.player.next()
@@ -66,9 +67,9 @@ def search_song():
     data = request.get_json()
     song = data.get('song')
     msg = {
-        "type": "add", 
-        "id": song.get("id"), 
-        "link": song.get("url"), 
+        "type": "add",
+        "id": song.get("id"),
+        "link": song.get("url"),
         "title": song.get("title")
     }
     send_message_tcp(to=flask.g.client.peer.get("ip"),
@@ -77,6 +78,7 @@ def search_song():
 
     response = {'message': 'Request received'}
     return response, 200
+
 
 @app.route('/api/search', methods=['POST'])
 def search_song():

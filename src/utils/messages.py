@@ -6,7 +6,7 @@ import flask
 import time
 import numpy as np
 from src.utils.client import Client
-
+import src.configs.config as config
 
 def send_message_tcp(to: str, msg: dict, port: int, ) -> None:
     """
@@ -39,6 +39,7 @@ def send_message_udp(
     :param dict msg: message to be broadcasted
     :param int port: Port number to broadcast
     """
+    print(f"udp msg sent {msg=}")
     msg = json.dumps(msg).encode('UTF-8')
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind(('', 0))
@@ -66,7 +67,7 @@ def process_tcp_msg(
             agreed_time = msg.get("timestamp")
             song_id = msg.get("id")
             song_name = msg.get("title")
-            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
+            peer_delay = np.mean(flask.g.client.peer.get("delay"))
             while True:
                 if time.perf_counter_ns() + peer_delay >= agreed_time:
                     flask.g.player.start(song_id, song_name)
@@ -75,7 +76,7 @@ def process_tcp_msg(
     elif msg["type"] == "stop":
         with client.lock:
             agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(flask.g.client.peer.get("delay")[-5:])
+            peer_delay = np.mean(flask.g.client.peer.get("delay"))
             while True:
                 if time.perf_counter_ns() + peer_delay >= agreed_time:
                     song_id = msg.get("id")
@@ -93,10 +94,14 @@ def process_tcp_msg(
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
         delay = time.perf_counter_ns() - timestamp
-        flask.g.client.peer["delay"].append(delay)
-        with flask.g.client.lock:
-            flask.g.client.peer["sync"] = True
-    
+        name = list(client.known_hosts.keys())[0]
+        with client.lock:
+            client.peer_sync_turn = True
+            meta_list = client.peer_delay[-config.DELAY_WINDOW:]
+            meta_list.append(delay)
+            client.peer_delay = meta_list
+        print(f"{client.peer_delay=}")
+
     else:
         raise Exception(f"Invalid message type {msg.get('type')}")
 
@@ -108,8 +113,10 @@ def process_udp_msg(
         port: int
 ):
     msg = json.loads(msg.decode('utf-8'))
+    print(f"msg recv {msg=}")
     if msg.get('type') == 'hello':
         with client.lock:
+            client.peer_sync_turn = True
             client.add_known_host(ip=host, name=msg.get('myname'))
         resp = {'type': 'aleykumselam', 'myname': f'{client.myname}'}
         send_message_tcp(to=host, msg=resp, port=port)

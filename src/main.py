@@ -8,7 +8,6 @@ import select
 import threading
 import concurrent.futures
 
-from src.app import app, set_params
 from src.configs import config
 from src.utils.client import Client
 from src.utils.search import Searcher
@@ -18,13 +17,14 @@ from src.utils.messages import send_message_tcp, send_message_udp, process_tcp_m
 # Initialize global variables
 client: Client
 player: AudioPlayer
+app = flask.Flask(__name__)
 
 # Create a thread pool with a maximum of 10 threads
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.THREAD_POOL_SIZE)
 
 
 def tcp_listener(
-        port: int = config.PORT,
+        port: int = config.MSG_PORT,
         buffer_size: int = config.BUFFER_SIZE,
 ):
     """
@@ -56,7 +56,7 @@ def tcp_listener(
 
 
 def udp_listener(
-        port: int = config.PORT,
+        port: int = config.MSG_PORT,
         buffer_size: int = config.BUFFER_SIZE,
 ) -> None:
     """
@@ -74,11 +74,11 @@ def udp_listener(
             msg, sender = result[0][0].recvfrom(buffer_size)
             if sender[0] != client.myip:
                 # submit the package for processing to the thread pool
-                executor.submit(process_udp_msg, client, msg, sender[0], config.PORT)
+                executor.submit(process_udp_msg, client, msg, sender[0], config.MSG_PORT)
 
 
 def udp_broadcaster(
-        port: int = config.PORT,
+        port: int = config.MSG_PORT,
         period: int = config.BROADCAST_PERIOD,
 ) -> None:
     """
@@ -88,6 +88,8 @@ def udp_broadcaster(
     """
     global client
     while True:
+        with client.lock:
+            client.peer_sync_turn = False
         try:
             msg = client.me
             send_message_udp(msg=msg, port=port)
@@ -133,53 +135,52 @@ def prompt() -> None:
                     send_message_tcp(to=target_ip, msg=message, port=config.PORT)
         else:
             print("This person does not exists!")
-            
 
-def sync() -> None:
+
+def sync(port: int = config.SYNC_PORT) -> None:
     """
     Constantly sending <SYNC> object
-    
     TODO: Add turn flag
     """
-    while flask.g.client.peer.get("sync"):
-        target_ip = flask.g.client.peer.get("ip")
-        message = {
-            "type": "sync",
-            "timestamp": time.perf_counter_ns(),
-        }
-        send_message_tcp(to=target_ip, msg=message, port=config.PORT)
-        with flask.g.client.lock:
-            flask.g.client.peer["sync"] = False       
-            
-   
+    global client
+    while True:
+        if client.known_hosts:
+            name = list(client.known_hosts.keys())[0]
+            if client.peer_sync_turn:
+                target_ip = client.known_hosts[name]
+                message = {
+                    "type": "sync",
+                    "timestamp": time.perf_counter_ns(),
+                }
+                send_message_tcp(to=target_ip, msg=message, port=port)
+                with client.lock:
+                    client.peer_sync_turn = False
+
+
 def player(action) -> None:
     """
     Chat prompt handler
     """
     pass
 
-    
-    
-app = flask.Flask(__name__)
 
 if __name__ == '__main__':
-    
     client = Client(myname="daglar")
-    flask.g.update({"client": client})
-    
-    player = AudioPlayer()
-    flask.g.update({"player": player})
-    
-    search = Searcher()
-    flask.g.update({"search": search})
-    
+    # flask.g.update({"client": client})
+    #
+    # player = AudioPlayer()
+    # flask.g.update({"player": player})
+    #
+    # search = Searcher()
+    # flask.g.update({"search": search})
+
     # Create threads
     threading.Thread(target=udp_broadcaster, args=()).start()  # udp broadcaster
     threading.Thread(target=udp_listener, args=()).start()  # udp listener
-    threading.Thread(target=tcp_listener(config.MSG_PORT), args=()).start()  # message listener
-    threading.Thread(target=tcp_listener(config.SYNC_PORT), args=()).start()  # sync listener
+    threading.Thread(target=tcp_listener, args=(config.MSG_PORT,)).start()  # message listener
+    threading.Thread(target=tcp_listener, args=(config.SYNC_PORT,)).start()  # sync listener
     threading.Thread(target=sync, args=()).start()  # sync listener
     threading.Thread(target=clear_cache, args=()).start()  # clear cache
 
     # Flask app
-    app.run()
+    # app.run()
