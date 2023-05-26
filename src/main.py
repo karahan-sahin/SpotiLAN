@@ -171,7 +171,7 @@ if __name__ == '__main__':
     # player = AudioPlayer()
     # flask.g.update({"player": player})
     #
-    # search = Searcher()
+    search = Searcher(songs=config.SONGS)
     # flask.g.update({"search": search})
 
     # Create threads
