@@ -29,15 +29,23 @@ class Searcher:
         yt = YouTube(url)
 
         # extract only audio
-        video = yt.streams.filter(only_audio=True).first()
+        video  = yt.streams.filter(only_audio=True).get_audio_only()
 
         # download the file
         out_file = video.download(output_path=path)
 
         # save the file
         base, ext = os.path.splitext(out_file)
+        import re
+        base = "/".join(base.split("/")[:-1]+[re.sub(" ","_",re.sub("\(.+?\)","",base.split("/")[-1]).lower().strip())])
         new_file = base + '.mp3'
         os.rename(out_file, new_file)
 
         # result of success
         print(yt.title + " has been successfully downloaded.")
+
+if __name__ == "__main__":
+    
+    ss = Searcher()
+    
+    ss.downloadSong("https://www.youtube.com/watch?v=sxQmOAkny0k", "musics/")
