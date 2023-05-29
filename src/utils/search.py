@@ -1,5 +1,5 @@
 import os
-from pytube import YouTube, Search
+from pytube import YouTube
 
 
 class Searcher:
