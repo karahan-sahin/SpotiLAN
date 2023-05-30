@@ -6,9 +6,11 @@ import flask
 import time
 import numpy as np
 from src.utils.client import Client
+from src.utils.audio_player import AudioPlayer
+from src.utils.search import Searcher
 import src.configs.config as config
 
-def send_message_tcp(to: str, msg: dict, port: int, ) -> None:
+def send_message_tcp(to: str, msg: dict, port: int) -> None:
     """
     Sends the given `message` to the available hosts:port socket
     :param str to: Private host IP in the LAN
@@ -48,9 +50,11 @@ def send_message_udp(
 
 
 def process_tcp_msg(
-        client: Client,
         msg: dict,
         host: str,
+        client: Client = None,
+        player: AudioPlayer = None,
+        searcher: Searcher = None,
 ):
     if msg.get('type') == 'aleykumselam':
         with client.lock:
@@ -67,29 +71,51 @@ def process_tcp_msg(
             agreed_time = msg.get("timestamp")
             song_id = msg.get("id")
             song_name = msg.get("title")
-            peer_delay = np.mean(flask.g.client.peer.get("delay"))
+            peer_delay = np.mean(client.peer.get("delay"))
             while True:
                 if time.perf_counter_ns() + peer_delay >= agreed_time:
-                    flask.g.player.start(song_id, song_name)
+                    player.start(song_id, song_name)
                     break    
                         
     elif msg["type"] == "stop":
         with client.lock:
             agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(flask.g.client.peer.get("delay"))
+            peer_delay = np.mean(client.peer.get("delay"))
             while True:
                 if time.perf_counter_ns() + peer_delay >= agreed_time:
                     song_id = msg.get("id")
                     song_name = msg.get("title")
-                    flask.g.player.stop(song_id, song_name)
-                    break       
+                    player.stop()
+                    break      
                 
+    elif msg["type"] == "next":
+        with client.lock:
+            agreed_time = msg.get("timestamp")
+            peer_delay = np.mean(client.peer.get("delay"))
+            while True:
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
+                    song_id = msg.get("id")
+                    song_name = msg.get("title")
+                    player.next_song()
+                    break  
+                
+    elif msg["type"] == "previous":
+        with client.lock:
+            agreed_time = msg.get("timestamp")
+            peer_delay = np.mean(client.peer.get("delay"))
+            while True:
+                if time.perf_counter_ns() + peer_delay >= agreed_time:
+                    song_id = msg.get("id")
+                    song_name = msg.get("title")
+                    player.previous_song()
+                    break  
+
     elif msg["type"] == "add":
         song_id = msg.get("id")
         song_name = msg.get("title")
         url = msg.get("link")
-        flask.g.search.downloadSong(url, "./musics/")
-        flask.g.player.add(song_id, song_name)    
+        fname = searcher.downloadSong(url, "./musics/")
+        player.add_to_queue(fname)    
     
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")

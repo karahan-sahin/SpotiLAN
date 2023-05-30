@@ -52,6 +52,8 @@ class Searcher:
 
         # result of success
         print(yt.title + " has been successfully downloaded.")
+    
+        return new_file
 
 
 if __name__ == "__main__":

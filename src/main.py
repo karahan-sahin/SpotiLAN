@@ -33,7 +33,7 @@ def tcp_listener(
     :param port: Port number to be listened
     :param buffer_size: size of the payload in package
     """
-    global client
+    global client, search, player
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((client.myip, port))
@@ -53,7 +53,7 @@ def tcp_listener(
                     except Exception as e:
                         raise e
                 msg = json.loads(msg)
-                executor.submit(process_tcp_msg, client, msg, addr[0])
+                executor.submit(process_tcp_msg, msg, addr[0], client, player, search)
 
 
 def udp_listener(
@@ -164,9 +164,10 @@ def actionHandle(action_type):
     agreed_time = time.perf_counter_ns() + config.DELAY
     
     peers = list(client.known_hosts.values())
-    if len(peers) > 1:
-        send_message_tcp(to=peers[1], msg={"type": action_type,
-                                           "timestamp": agreed_time}, port=config.PORT)
+    if len(peers):
+        send_message_tcp(to=peers[0], 
+                         msg={"type": action_type,
+                             "timestamp": agreed_time}, port=config.MSG_PORT)
     player_action = {
         "start": player.play,
         "stop": player.stop,
@@ -252,7 +253,7 @@ def download_song():
 if __name__ == '__main__':
     
     
-    client = Client(myname="daglar")
+    client = Client(myname="karahan")
     player = AudioPlayer()
     search = Searcher(songs=config.SONGS)
     
@@ -263,7 +264,7 @@ if __name__ == '__main__':
     threading.Thread(target=udp_broadcaster, args=()).start()  # udp broadcaster
     threading.Thread(target=udp_listener, args=()).start()  # udp listener
     threading.Thread(target=tcp_listener, args=(config.MSG_PORT,)).start()  # message listener
-    threading.Thread(target=sync, args=()).start()  # sync listener
+    #threading.Thread(target=sync, args=()).start()  # sync listener
     #threading.Thread(target=clear_cache, args=()).start()  # clear cache
 
     # Flask app
