@@ -10,6 +10,13 @@ from src.utils.audio_player import AudioPlayer
 from src.utils.search import Searcher
 import src.configs.config as config
 
+import time
+import threading
+import multiprocessing
+from pydub import AudioSegment, playback
+
+global ff
+
 def send_message_tcp(to: str, msg: dict, port: int) -> None:
     """
     Sends the given `message` to the available hosts:port socket
@@ -17,12 +24,13 @@ def send_message_tcp(to: str, msg: dict, port: int) -> None:
     :param dict msg: Message to be sent
     :param int port: Port number to be listened
     """
+    print(f"send tcp {msg=} to {to=}")
     msg = json.dumps(msg).encode('utf-8')
     msg = base64.b64encode(msg)
     # Create a socket object
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # Set the timeout to 1 sec
-        s.settimeout(1.0)
+        s.settimeout(0.5)
         try:
             # Establish connection
             s.connect((to, port))
@@ -56,6 +64,9 @@ def process_tcp_msg(
         player: AudioPlayer = None,
         searcher: Searcher = None,
 ):
+    
+    global ff
+    
     if msg.get('type') == 'aleykumselam':
         with client.lock:
             client.add_known_host(ip=host, name=msg.get('myname'))
@@ -69,23 +80,30 @@ def process_tcp_msg(
         # START CURRENT SONG
         with client.lock:
             agreed_time = msg.get("timestamp")
-            song_id = msg.get("id")
-            song_name = msg.get("title")
-            peer_delay = np.mean(client.peer.get("delay"))
+            title = msg.get("title")
+            peer_delay = np.mean(client.peer_delay)
             while True:
-                if time.perf_counter_ns() + peer_delay >= agreed_time:
-                    player.start(song_id, song_name)
+                print("Current Time", time.time_ns())
+                print("Agreed Time", agreed_time)
+                if time.time_ns() - peer_delay >= agreed_time:
+                #if time.time_ns() >= agreed_time:
+                    print("Starting...", )
+                    seg = AudioSegment.from_file(title)
+                    ff = playback._play_with_simpleaudio(seg)
+                    print("Started song")
                     break    
                         
     elif msg["type"] == "stop":
         with client.lock:
             agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(client.peer.get("delay"))
+            peer_delay = np.mean(client.peer_delay)
             while True:
-                if time.perf_counter_ns() + peer_delay >= agreed_time:
-                    song_id = msg.get("id")
-                    song_name = msg.get("title")
-                    player.stop()
+                print("Current Time", time.time_ns())
+                print("Agreed Time", agreed_time)
+                if time.time_ns() - peer_delay >= agreed_time:
+                #if time.time_ns() >= agreed_time:
+                    print("Stopping song...")
+                    ff.stop()
                     break      
                 
     elif msg["type"] == "next":
@@ -93,10 +111,11 @@ def process_tcp_msg(
             agreed_time = msg.get("timestamp")
             peer_delay = np.mean(client.peer.get("delay"))
             while True:
-                if time.perf_counter_ns() + peer_delay >= agreed_time:
+                if time.time_ns() + peer_delay >= agreed_time:
                     song_id = msg.get("id")
                     song_name = msg.get("title")
-                    player.next_song()
+                    with player.lock:
+                        player.next_song()
                     break  
                 
     elif msg["type"] == "previous":
@@ -104,10 +123,9 @@ def process_tcp_msg(
             agreed_time = msg.get("timestamp")
             peer_delay = np.mean(client.peer.get("delay"))
             while True:
-                if time.perf_counter_ns() + peer_delay >= agreed_time:
-                    song_id = msg.get("id")
-                    song_name = msg.get("title")
-                    player.previous_song()
+                if time.time_ns() + peer_delay >= agreed_time:
+                    with player.lock:
+                        player.previous_song()
                     break  
 
     elif msg["type"] == "add":
@@ -119,14 +137,12 @@ def process_tcp_msg(
     
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
-        delay = time.perf_counter_ns() - timestamp
+        delay = time.time_ns() - timestamp
         name = list(client.known_hosts.keys())[0]
         with client.lock:
-            client.peer_sync_turn = True
             meta_list = client.peer_delay[-config.DELAY_WINDOW:]
             meta_list.append(delay)
             client.peer_delay = meta_list
-        print(f"{client.peer_delay=}")
 
     else:
         raise Exception(f"Invalid message type {msg.get('type')}")
@@ -142,7 +158,6 @@ def process_udp_msg(
     print(f"msg recv {msg=}")
     if msg.get('type') == 'hello':
         with client.lock:
-            client.peer_sync_turn = True
             client.add_known_host(ip=host, name=msg.get('myname'))
         resp = {'type': 'aleykumselam', 'myname': f'{client.myname}'}
         send_message_tcp(to=host, msg=resp, port=port)

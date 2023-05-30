@@ -1,4 +1,5 @@
 import time
+import threading
 import multiprocessing
 from pydub import AudioSegment, playback
 
@@ -12,10 +13,12 @@ class AudioPlayer:
         self.queue = []
         self.audio_file = ""
         self.current_idx = 0
-        self.is_playing = None
+        self.is_playing = False
         self.playback = None
+        self.lock = threading.Lock()
 
     def play(self):
+        print("Is starting.....")
         if not self.is_playing:
             if not self.audio_file: self.audio_file = self.queue[0]
 
@@ -25,12 +28,11 @@ class AudioPlayer:
             self.playback = playback._play_with_simpleaudio(self.audio_segment)
             self.is_playing = True
 
-            self.process = multiprocessing.Process(target=wait, args=(self.audio_segment.duration_seconds,))
-            self.process.start()
+            #self.process.start()
 
     def next_song(self):
         print("Terminating.....")
-        self.process.terminate()
+        #self.process.terminate()
         self.playback.stop()
         self.is_playing = False
         if self.current_idx < len(self.queue) - 1:
@@ -42,7 +44,7 @@ class AudioPlayer:
             print("No more songs left ahead....")
 
     def previous_song(self):
-        self.process.terminate()
+        #self.process.terminate()
         self.playback.stop()
         self.is_playing = False
         if self.current_idx > 0:

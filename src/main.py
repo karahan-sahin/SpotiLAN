@@ -23,7 +23,6 @@ app = flask.Flask(__name__)
 # Create a thread pool with a maximum of 10 threads
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.THREAD_POOL_SIZE)
 
-
 def tcp_listener(
         port: int = config.MSG_PORT,
         buffer_size: int = config.BUFFER_SIZE,
@@ -34,6 +33,7 @@ def tcp_listener(
     :param buffer_size: size of the payload in package
     """
     global client, search, player
+    print(f"Listening From {port=}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((client.myip, port))
@@ -53,6 +53,7 @@ def tcp_listener(
                     except Exception as e:
                         raise e
                 msg = json.loads(msg)
+                print(f"Msg recv from {port=} {msg=}")
                 executor.submit(process_tcp_msg, msg, addr[0], client, player, search)
 
 
@@ -89,8 +90,6 @@ def udp_broadcaster(
     """
     global client
     while True:
-        with client.lock:
-            client.peer_sync_turn = False
         try:
             msg = client.me
             send_message_udp(msg=msg, port=port)
@@ -142,42 +141,47 @@ def sync(port: int = config.SYNC_PORT) -> None:
     """
     Constantly sending <SYNC> object
     TODO: Add turn flag
+    
+    Current Time 1685461528320175000
+    Agreed Time  1685461528477618e+18   
+    
     """
     global client
     while True:
         if client.known_hosts:
             name = list(client.known_hosts.keys())[0]
-            if client.peer_sync_turn:
-                target_ip = client.known_hosts[name]
-                message = {
-                    "type": "sync",
-                    "timestamp": time.perf_counter_ns(),
-                }
-                send_message_tcp(to=target_ip, msg=message, port=port)
-                with client.lock:
-                    client.peer_sync_turn = False
+            target_ip = client.known_hosts[name]
+            message = {
+                "type": "sync",
+                "timestamp": time.time_ns(),
+            }
+            send_message_tcp(to=target_ip, msg=message, port=port)
+            #print(client.peer_delay)
+            time.sleep(0.5)
 
 
-def actionHandle(action_type):
+def actionHandle(action_type, client, player):
     # calculate delay time + send package
     # send_message_tcp
-    agreed_time = time.perf_counter_ns() + config.DELAY
-    
-    peers = list(client.known_hosts.values())
-    if len(peers):
-        send_message_tcp(to=peers[0], 
-                         msg={"type": action_type,
-                             "timestamp": agreed_time}, port=config.MSG_PORT)
+    agreed_time = time.time_ns() + config.DELAY
+    if client.known_hosts:
+        name = list(client.known_hosts.keys())[0]
+        target_ip = client.known_hosts[name]
+        message = {"type": action_type, "timestamp": agreed_time}
+        
+        send_message_tcp(to=target_ip, 
+                        msg=message, 
+                        port=config.MUSIC_PORT)
     player_action = {
         "start": player.play,
         "stop": player.stop,
         "next": player.next_song,
-        "prev": player.previous_song,
+        "previous": player.previous_song,
     }
     act =  player_action[action_type]
     
     while True:
-        if time.perf_counter_ns() >= agreed_time:
+        if time.time_ns() >= agreed_time:
             act()
             break
 
@@ -189,18 +193,21 @@ def home():
 
 @app.route('/api/audio', methods=['POST'])
 def handle_request():
+    
+    global player, client, search
+    
     data = request.get_json()
     action = data.get('action')
 
     # Perform actions based on the received action
     if action == 'play':
-        actionHandle("start")
+        executor.submit(actionHandle, "start", client, player)
     elif action == 'pause':
-        actionHandle("stop")
+        executor.submit(actionHandle, "stop", client, player)
     elif action == 'next':
-        actionHandle("next")
+        executor.submit(actionHandle, "next", client, player) 
     elif action == 'previous':
-        actionHandle("prev")
+        executor.submit(actionHandle, "previous", client, player) 
 
     response = {'message': 'Request received'}
     return response, 200
@@ -227,7 +234,7 @@ def add_song():
     }
     send_message_tcp(to=client.peer.get("ip"),
                      msg=msg,
-                     port=config.PORT)
+                     port=config.MUSIC_PORT)
 
     response = {'message': 'Request received'}
     return response, 200
@@ -264,7 +271,9 @@ if __name__ == '__main__':
     threading.Thread(target=udp_broadcaster, args=()).start()  # udp broadcaster
     threading.Thread(target=udp_listener, args=()).start()  # udp listener
     threading.Thread(target=tcp_listener, args=(config.MSG_PORT,)).start()  # message listener
-    #threading.Thread(target=sync, args=()).start()  # sync listener
+    threading.Thread(target=tcp_listener, args=(config.MUSIC_PORT,)).start()  # music listener
+    threading.Thread(target=tcp_listener, args=(config.SYNC_PORT,)).start()  # sync listener
+    threading.Thread(target=sync, args=(config.SYNC_PORT,)).start()  # sync listener
     #threading.Thread(target=clear_cache, args=()).start()  # clear cache
 
     # Flask app
