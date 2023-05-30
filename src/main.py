@@ -6,12 +6,14 @@ import socket
 import flask
 import select
 import threading
+import numpy as np
 import concurrent.futures
 from flask import render_template, request, jsonify
 from src.configs import config
 from src.utils.client import Client
 from src.utils.search import Searcher
 from src.utils.audio_player import AudioPlayer
+from pydub import AudioSegment, playback
 from src.utils.messages import send_message_tcp, send_message_udp, process_tcp_msg, process_udp_msg
 
 # Initialize global variables
@@ -19,6 +21,7 @@ client: Client
 player: AudioPlayer
 search: Searcher
 app = flask.Flask(__name__)
+global ff
 
 # Create a thread pool with a maximum of 10 threads
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=config.THREAD_POOL_SIZE)
@@ -53,7 +56,6 @@ def tcp_listener(
                     except Exception as e:
                         raise e
                 msg = json.loads(msg)
-                print(f"Msg recv from {port=} {msg=}")
                 executor.submit(process_tcp_msg, msg, addr[0], client, player, search)
 
 
@@ -112,31 +114,6 @@ def clear_cache(
             client.clear_known_hosts()
 
 
-def prompt() -> None:
-    """
-    Chat prompt handler
-    """
-    global client
-    while True:
-        curmsg = input().partition(":")
-        # Exit feature
-        if curmsg[1] != ':' and curmsg[0].strip() == "exit":
-            print("Exited.")
-            os._exit(1)
-        # Messaging feature
-        elif curmsg[0].strip() in client.known_hosts.keys():
-            target_ip = client.known_hosts.get(curmsg[0].strip())
-            if target_ip is not None:
-                with client.lock:
-                    message = {
-                        'type': 'message',
-                        'content': curmsg[2].strip()
-                    }
-                    send_message_tcp(to=target_ip, msg=message, port=config.PORT)
-        else:
-            print("This person does not exists!")
-
-
 def sync(port: int = config.SYNC_PORT) -> None:
     """
     Constantly sending <SYNC> object
@@ -156,35 +133,46 @@ def sync(port: int = config.SYNC_PORT) -> None:
                 "timestamp": time.time_ns(),
             }
             send_message_tcp(to=target_ip, msg=message, port=port)
-            #print(client.peer_delay)
             time.sleep(0.5)
 
 
 def actionHandle(action_type, client, player):
+    global ff
     # calculate delay time + send package
     # send_message_tcp
     agreed_time = time.time_ns() + config.DELAY
+    agreed_time = int(agreed_time)
+    print(time.time_ns())
+    print(f"{agreed_time}")
     if client.known_hosts:
         name = list(client.known_hosts.keys())[0]
         target_ip = client.known_hosts[name]
-        message = {"type": action_type, "timestamp": agreed_time}
+        message = {"type": action_type, "timestamp": agreed_time, "title": "musics/down_from_the_sky.mp3"}
         
         send_message_tcp(to=target_ip, 
                         msg=message, 
                         port=config.MUSIC_PORT)
-    player_action = {
-        "start": player.play,
-        "stop": player.stop,
-        "next": player.next_song,
-        "previous": player.previous_song,
-    }
-    act =  player_action[action_type]
     
-    while True:
-        if time.time_ns() >= agreed_time:
-            act()
-            break
-
+    if action_type == "start":
+        with client.lock:
+            peer_delay = np.mean(client.peer_delay, dtype=int)
+            while True:
+                if time.time_ns() - peer_delay >= agreed_time:
+                #if time.time_ns() >= agreed_time:
+                    print("Starting...", )
+                    seg = AudioSegment.from_file("musics/down_from_the_sky.mp3")
+                    ff = playback._play_with_simpleaudio(seg)
+                    print("Started song")
+                    break
+    elif action_type == "stop":
+        with client.lock:
+            peer_delay = np.mean(client.peer_delay, dtype=int)
+            while True:
+                if time.time_ns() - peer_delay >= agreed_time:
+                #if time.time_ns() >= agreed_time:
+                    print("Stopping song...")
+                    ff.stop()
+                    break  
 
 @app.route('/', methods=['GET'])
 def home():
@@ -260,7 +248,7 @@ def download_song():
 if __name__ == '__main__':
     
     
-    client = Client(myname="karahan")
+    client = Client(myname="daglar")
     player = AudioPlayer()
     search = Searcher(songs=config.SONGS)
     
