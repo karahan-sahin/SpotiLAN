@@ -24,7 +24,7 @@ def send_message_tcp(to: str, msg: dict, port: int) -> None:
     :param dict msg: Message to be sent
     :param int port: Port number to be listened
     """
-    print(f"send tcp {msg=} to {to=}")
+    #print(f"send tcp {msg=} to {to=}")
     msg = json.dumps(msg).encode('utf-8')
     msg = base64.b64encode(msg)
     # Create a socket object
@@ -79,13 +79,12 @@ def process_tcp_msg(
     elif msg["type"] == "start":
         # START CURRENT SONG
         with client.lock:
-            agreed_time = msg.get("timestamp")
+            agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
+            print("Peer delay", peer_delay)
             while True:
-                print("Current Time", time.time_ns())
-                print("Agreed Time", agreed_time)
-                if time.time_ns() - peer_delay >= agreed_time:
+                if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
                 #if time.time_ns() >= agreed_time:
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
@@ -95,12 +94,11 @@ def process_tcp_msg(
                         
     elif msg["type"] == "stop":
         with client.lock:
-            agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(client.peer_delay)
+            agreed_time = int(msg.get("timestamp"))
+            peer_delay = int(np.mean(client.peer_delay, dtype=int))
+            print("Peer delay", peer_delay)
             while True:
-                print("Current Time", time.time_ns())
-                print("Agreed Time", agreed_time)
-                if time.time_ns() - peer_delay >= agreed_time:
+                if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
                 #if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
@@ -108,10 +106,10 @@ def process_tcp_msg(
                 
     elif msg["type"] == "next":
         with client.lock:
-            agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(client.peer.get("delay"))
+            agreed_time = int(msg.get("timestamp"))
+            peer_delay = int(np.mean(client.peer_delay, dtype=int))
             while True:
-                if time.time_ns() + peer_delay >= agreed_time:
+                if int(int(time.time_ns()) - peer_delay) >= agreed_time:
                     song_id = msg.get("id")
                     song_name = msg.get("title")
                     with player.lock:
@@ -120,10 +118,10 @@ def process_tcp_msg(
                 
     elif msg["type"] == "previous":
         with client.lock:
-            agreed_time = msg.get("timestamp")
-            peer_delay = np.mean(client.peer.get("delay"))
+            agreed_time = int(msg.get("timestamp"))
+            peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
-                if time.time_ns() + peer_delay >= agreed_time:
+                if int(int(time.time_ns()) - int(peer_delay) )>= agreed_time:
                     with player.lock:
                         player.previous_song()
                     break  
@@ -137,11 +135,11 @@ def process_tcp_msg(
     
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
-        delay = time.time_ns() - timestamp
+        delay =  time.time_ns() - timestamp
         name = list(client.known_hosts.keys())[0]
         with client.lock:
             meta_list = client.peer_delay[-config.DELAY_WINDOW:]
-            meta_list.append(delay)
+            meta_list.append(int(delay))
             client.peer_delay = meta_list
 
     else:
