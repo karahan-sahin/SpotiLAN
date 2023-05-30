@@ -21,6 +21,7 @@ class AudioPlayer:
 
             self.audio_segment = AudioSegment.from_file(self.audio_file)
             # print("Playing...", self.audio_file, f"{self.queue=}")
+            print(f"Starting song [{self.audio_file}]")
             self.playback = playback._play_with_simpleaudio(self.audio_segment)
             self.is_playing = True
 
@@ -52,7 +53,14 @@ class AudioPlayer:
             print("No more songs left behind....")
 
     def stop(self):
-        self.playing.terminate()
+        self.process.terminate()
+        self.playback.stop()
+        self.is_playing = False
+        
+    def getQueue(self):
+        return [
+            " ".join([t.capitalize() for t in song[len("musics/"):-len(".mp3")].split("_")]) for song in self.queue
+        ]
 
     def set_volume(self, volume):
         self.audio_segment.set_volume(volume)

@@ -158,32 +158,33 @@ def sync(port: int = config.SYNC_PORT) -> None:
                     client.peer_sync_turn = False
 
 
-def player(action) -> None:
-    """
-    Chat prompt handler
-    """
-    pass
-
-
-def action(action_type):
+def actionHandle(action_type):
     # calculate delay time + send package
     # send_message_tcp
     agreed_time = time.perf_counter_ns() + config.DELAY
-    send_message_tcp(to=flask.g.client.peer.get("ip"), msg={"type": action_type,
-                                                            "song": flask.g.player.current_song,
-                                                            "timestamp": agreed_time}, port=config.PORT)
-
-    player_action = flask.g.player.start if action_type == "start" else flask.g.player.stop
+    
+    peers = list(client.known_hosts.values())
+    if len(peers) > 1:
+        send_message_tcp(to=peers[1], msg={"type": action_type,
+                                           "timestamp": agreed_time}, port=config.PORT)
+    player_action = {
+        "start": player.play,
+        "stop": player.stop,
+        "next": player.next_song,
+        "prev": player.previous_song,
+    }
+    act =  player_action[action_type]
+    
     while True:
         if time.perf_counter_ns() >= agreed_time:
-            player_action()
+            act()
+            break
 
 
 @app.route('/', methods=['GET'])
 def home():
     # if client.name:
-    return render_template('index.html', song_list=["1", "2", "3", "4"])
-
+    return render_template('index.html', song_list=player.getQueue())
 
 @app.route('/api/audio', methods=['POST'])
 def handle_request():
@@ -192,17 +193,13 @@ def handle_request():
 
     # Perform actions based on the received action
     if action == 'play':
-        action("start")
+        actionHandle("start")
     elif action == 'pause':
-        action("stop")
+        actionHandle("stop")
     elif action == 'next':
-        action("stop")
-        flask.g.player.next()
-        action("start")
+        actionHandle("next")
     elif action == 'previous':
-        action("stop")
-        flask.g.player.prev()
-        action("start")
+        actionHandle("prev")
 
     response = {'message': 'Request received'}
     return response, 200
@@ -210,13 +207,12 @@ def handle_request():
 
 @app.route('/api/song-list', methods=['GET'])
 def get_song_list():
-    return jsonify({'song_list': ["1", "2", "3"]})
+    return jsonify({'song_list': player.getQueue()})
 
 
 @app.route('/api/host-list', methods=['GET'])
 def get_host_list():
-    return jsonify({'host_list': ["1", "2", "3"]})
-
+    return jsonify({'host_list': list(client.known_hosts.keys())})
 
 @app.route('/api/add-song', methods=['POST'])
 def add_song():
@@ -228,7 +224,7 @@ def add_song():
         "link": song.get("url"),
         "title": song.get("title")
     }
-    send_message_tcp(to=flask.g.client.peer.get("ip"),
+    send_message_tcp(to=client.peer.get("ip"),
                      msg=msg,
                      port=config.PORT)
 
@@ -254,17 +250,21 @@ def download_song():
 
 
 if __name__ == '__main__':
+    
+    
     client = Client(myname="daglar")
     player = AudioPlayer()
     search = Searcher(songs=config.SONGS)
+    
+    for p in config.SONGS.keys():
+        player.add_to_queue("musics/"+p+".mp3")
 
     # Create threads
     threading.Thread(target=udp_broadcaster, args=()).start()  # udp broadcaster
     threading.Thread(target=udp_listener, args=()).start()  # udp listener
     threading.Thread(target=tcp_listener, args=(config.MSG_PORT,)).start()  # message listener
-    threading.Thread(target=tcp_listener, args=(config.SYNC_PORT,)).start()  # sync listener
     threading.Thread(target=sync, args=()).start()  # sync listener
-    threading.Thread(target=clear_cache, args=()).start()  # clear cache
+    #threading.Thread(target=clear_cache, args=()).start()  # clear cache
 
     # Flask app
     app.run()

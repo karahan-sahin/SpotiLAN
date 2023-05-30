@@ -104,6 +104,13 @@ class Client:
             # Get the IP address if found
             if match:
                 private_ip = match.group(1)
+                
+                import socket
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                private_ip = s.getsockname()[0]
+                s.close()
+            
                 print(f"My private IP address is: {private_ip}")
                 return private_ip
             else:
