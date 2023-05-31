@@ -146,6 +146,19 @@
                     <!-- Content of Queue page -->
                     <h3>Queue Page</h3>
                     <p>This is the content of the Queue page.</p>
+                    <div class="row" style="padding-top: 10px"></div>
+                    <div class="container-fluid" id="queue-list-container">
+                        <!-- Song list -->
+                        {% for song in queue_list %}
+                        <div class="col-md-12 mb-4" style="height: 5rem;">
+                            <div class="card h-25 rounded p-3" style="height: 5rem;">
+                                <div class="card-body" style="height: 5rem;">
+                                    <h5 class="card-title">{{ song }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
                 <div aria-labelledby="songs-tab" class="tab-pane fade" id="songs" role="tabpanel">
                     <!-- Content of Playlist page -->

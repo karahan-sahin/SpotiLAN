@@ -19,15 +19,75 @@ function updateSongList() {
 
             data.song_list.forEach(function (song) {
                 var songCard = `
-                        <div class="col-md-12 mb-4" style="padding-top: 5px">
-                            <div class="card h-100 rounded p-3">
+                        <div class="col-md-12 mb-4" style="padding-top: 5px" >
+                            <div class="card h-100 rounded p-3" style="flex-direction: row;" >
                                 <div class="card-body">
                                     <h5 class="card-title">${song}</h5>
                                 </div>
+                                <button type="bstton" class="btn add add-btn btn-primary" data-url=${song} style="margin-right: 50px;align-self: center;">➕</button>
+                                <button type="button" class="btn add remove-btn btn-primary" data-url=${song} style="margin-right: 50px;align-self: center;">➖</button>
                             </div>
                         </div>
                     `;
                 songListContainer.innerHTML += songCard;
+            });
+            // Attach event listeners to the add song to queue buttons
+            const addButtons = document.getElementsByClassName('add-btn');
+            Array.from(addButtons).forEach(button => {
+                button.addEventListener('click', () => {
+                    const url = button.getAttribute('data-url');
+                    sendQueueActionRequest(url, 'add');
+                });
+            });
+
+            // Attach event listeners to the remove song from queue buttons
+            const removeButtons = document.getElementsByClassName('remove-btn');
+            Array.from(removeButtons).forEach(button => {
+                button.addEventListener('click', () => {
+                    const url = button.getAttribute('data-url');
+                    sendQueueActionRequest(url, 'remove');
+                });
+            });
+        })
+        .catch(function (error) {
+            console.log(error);
+            // Handle error if needed
+        });
+}
+
+function updateQueueList() {
+    fetch('/api/queue-list')
+        .then(function (response) {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Request failed.');
+        })
+        .then(function (data) {
+            var songListContainer = document.getElementById('queue-list-container');
+            songListContainer.innerHTML = '';
+
+            data.queue_list.forEach(function (song) {
+                var songCard = `
+                        <div class="col-md-12 mb-4" style="padding-top: 5px" >
+                            <div class="card h-100 rounded p-3" style="flex-direction: row;" >
+                                <div class="card-body">
+                                    <h5 class="card-title">${song}</h5>
+                                </div>
+                                <button type="button" class="btn add remove-btn btn-primary" data-url=${song} style="margin-right: 50px;align-self: center;">➖</button>
+                            </div>
+                        </div>
+                    `;
+                songListContainer.innerHTML += songCard;
+            });
+
+            // Attach event listeners to the remove song from queue buttons
+            const removeButtons = document.getElementsByClassName('remove-btn');
+            Array.from(removeButtons).forEach(button => {
+                button.addEventListener('click', () => {
+                    const url = button.getAttribute('data-url');
+                    sendQueueActionRequest(url, 'remove');
+                });
             });
         })
         .catch(function (error) {
@@ -64,10 +124,12 @@ function updateHostList() {
 
 // Initialize
 updateSongList();
+//updateQueueList();
 updateHostList();
 
 // Update every 5 seconds
 setInterval(updateSongList, 5000);
+setInterval(updateQueueList, 5000);
 setInterval(updateHostList, 5000);
 
 previousBtn.addEventListener('click', function () {
@@ -169,6 +231,28 @@ function updateSearchResults() {
                 // Handle error if needed
             });
     }
+}
+
+function sendQueueActionRequest(song_name, action_type) {
+    fetch('http://127.0.0.1:5000/api/queue', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({song: song_name, action: action_type})
+    })
+        .then(response => {
+            if (response.ok) {
+                // Handle the successful download response
+                console.log(`${action_type} request successful:`, song_name);
+            } else {
+                throw new Error(`${action_type} request failed.`);
+            }
+        })
+        .catch(error => {
+            console.log(error);
+            // Handle error if needed
+        });
 }
 
 function sendDownloadRequest(url) {
