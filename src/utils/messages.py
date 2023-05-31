@@ -16,6 +16,7 @@ from pydub import AudioSegment, playback
 
 global ff, queue
 
+
 def send_message_tcp(to: str, msg: dict, port: int) -> None:
     """
     Sends the given `message` to the available hosts:port socket
@@ -23,7 +24,7 @@ def send_message_tcp(to: str, msg: dict, port: int) -> None:
     :param dict msg: Message to be sent
     :param int port: Port number to be listened
     """
-    #print(f"send tcp {msg=} to {to=}")
+    # print(f"send tcp {msg=} to {to=}")
     msg = json.dumps(msg).encode('utf-8')
     msg = base64.b64encode(msg)
     # Create a socket object
@@ -65,9 +66,9 @@ def process_tcp_msg(
         playlist: list = None,
         curr: int = None,
 ):
-    
+
     global ff
-    
+
     if msg.get('type') == 'aleykumselam':
         with client.lock:
             client.add_known_host(ip=host, name=msg.get('myname'))
@@ -77,7 +78,7 @@ def process_tcp_msg(
             idx = list(client.known_hosts.values()).index(host)
             name = list(client.known_hosts.keys())[idx]
         print(f"from {name} : {msg.get('content')}")
-    
+
     elif msg["type"] == "start":
         # START CURRENT SONG
         print(f"tcp recv {msg=}")
@@ -92,8 +93,8 @@ def process_tcp_msg(
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     print("Started song")
-                    break    
-                        
+                    break
+
     elif msg["type"] == "stop":
         print(f"tcp recv {msg=}")
         with client.lock:
@@ -105,8 +106,8 @@ def process_tcp_msg(
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
                     print("Stopping song...")
                     ff.stop()
-                    break      
-                
+                    break
+
     elif msg["type"] == "next":
         print(f"tcp recv {msg=}")
         with client.lock:
@@ -118,16 +119,16 @@ def process_tcp_msg(
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
                     print("Stopping song...")
                     ff.stop()
-                    if curr == (len(playlist) -1):
+                    if curr == (len(playlist) - 1):
                         curr = 0
                     else:
-                        curr += 1     
+                        curr += 1
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     print("Started song")
-                    break  
-                
+                    break
+
     elif msg["type"] == "previous":
         print(f"tcp recv {msg=}")
         with client.lock:
@@ -140,32 +141,32 @@ def process_tcp_msg(
                     print("Stopping song...")
                     ff.stop()
                     if curr == 0:
-                        curr -= (len(playlist) -1)
+                        curr -= (len(playlist) - 1)
                     else:
-                        curr -= 1            
+                        curr -= 1
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     print("Started song")
-                    break  
+                    break
 
     elif msg["type"] == "queue":
         print(f"tcp recv {msg=}")
         action = msg.get("action")
         song_name = msg.get("song")
-        if action == "add": 
+        if action == "add":
             queue.append(song_name)
-        if action == "remove": 
+        if action == "remove":
             queue.remove(song_name)
-        
+
     elif msg["type"] == "download":
         url = msg.get("link")
         fname = searcher.downloadSong(url, "./musics/")
-        playlist.append(fname)    
-    
+        playlist.append(fname)
+
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
-        delay =  time.time_ns() - timestamp
+        delay = time.time_ns() - timestamp
         name = list(client.known_hosts.keys())[0]
         with client.lock:
             meta_list = client.peer_delay[-config.DELAY_WINDOW:]
@@ -189,32 +190,3 @@ def process_udp_msg(
             client.add_known_host(ip=host, name=msg.get('myname'))
         resp = {'type': 'aleykumselam', 'myname': f'{client.myname}'}
         send_message_tcp(to=host, msg=resp, port=port)
-
-# def udp_message_handler(
-#         client: Client,
-#         msg: Union[bytes, dict],
-#         in_ip: str
-# ):
-#     """
-#     Receives a message decides whether hosts are met before
-#     :param Client client: Identity object that contains myip and myname field
-#     :param dict msg: Incoming message as string
-#     :param str in_ip: Incoming messages' sender ip
-#     :return: None if a.s. message, otherwise answer
-#     """
-#     if isinstance(msg, bytes):
-#         msg = json.loads(msg.decode('utf-8'))
-#     elif isinstance(msg, str):
-#         msg = json.loads(msg)
-#     try:
-#         if msg.get('type') == 'hello':
-#             with client.lock:
-#                 client.add_new_host(ip=in_ip, name=msg.get('myname'))
-#                 resp = {'type': 'aleykumselam', 'myname': f'{client.myname}'}
-#             return resp
-#         else:
-#             print(f"Invalid type: {msg.get('type')}")
-#             return dict()
-#     except Exception as e:
-#         print(f'Error occurred {e=}')
-#         return
