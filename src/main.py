@@ -9,7 +9,7 @@ import select
 import threading
 import numpy as np
 import concurrent.futures
-from flask import render_template, jsonify
+from flask import render_template, jsonify, request
 from src.configs import config
 from src.utils.client import Client
 from src.utils.search import Searcher
@@ -162,9 +162,8 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
-            peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
-                if time.time_ns() - peer_delay >= agreed_time:
+                if time.time_ns() >= agreed_time:
                     seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
                     break
@@ -181,9 +180,8 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
-            peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
-                if time.time_ns() - peer_delay >= agreed_time:
+                if time.time_ns() >= agreed_time:
                     ff.stop()
                     break
 
@@ -204,9 +202,8 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
-            peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
-                if time.time_ns() - peer_delay >= agreed_time:
+                if time.time_ns()>= agreed_time:
                     ff.stop()
                     seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
@@ -229,9 +226,8 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
-            peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
-                if time.time_ns() - peer_delay >= agreed_time:
+                if time.time_ns()>= agreed_time:
                     ff.stop()
                     seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
