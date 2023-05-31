@@ -24,7 +24,6 @@ def send_message_tcp(to: str, msg: dict, port: int) -> None:
     :param dict msg: Message to be sent
     :param int port: Port number to be listened
     """
-    # print(f"send tcp {msg=} to {to=}")
     msg = json.dumps(msg).encode('utf-8')
     msg = base64.b64encode(msg)
     # Create a socket object
@@ -49,7 +48,6 @@ def send_message_udp(
     :param dict msg: message to be broadcasted
     :param int port: Port number to broadcast
     """
-    print(f"udp msg sent {msg=}")
     msg = json.dumps(msg).encode('UTF-8')
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind(('', 0))
@@ -65,6 +63,7 @@ def process_tcp_msg(
         queue: list = None,
         playlist: list = None,
         curr: int = None,
+        curr_lock = None
 ):
 
     global ff
@@ -81,77 +80,62 @@ def process_tcp_msg(
 
     elif msg["type"] == "start":
         # START CURRENT SONG
-        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
-            print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                    print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
-                    print("Started song")
                     break
 
     elif msg["type"] == "stop":
-        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
-            print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                    print("Stopping song...")
                     ff.stop()
                     break
 
     elif msg["type"] == "next":
-        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
-            print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                    print("Stopping song...")
                     ff.stop()
-                    if curr == (len(playlist) - 1):
-                        curr = 0
-                    else:
-                        curr += 1
-                    print("Starting...", )
+                    with curr_lock:
+                        if curr == (len(playlist) - 1):
+                            curr = 0
+                        else:
+                            curr += 1
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
-                    print("Started song")
                     break
 
     elif msg["type"] == "previous":
-        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
-            print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                    print("Stopping song...")
                     ff.stop()
-                    if curr == 0:
-                        curr -= (len(playlist) - 1)
-                    else:
-                        curr -= 1
-                    print("Starting...", )
+                    with curr_lock:
+                        if curr == 0:
+                            curr -= (len(playlist) - 1)
+                        else:
+                            curr -= 1
+
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
-                    print("Started song")
                     break
 
     elif msg["type"] == "queue":
-        print(f"tcp recv {msg=}")
         action = msg.get("action")
         song_name = msg.get("song")
         if action == "add":
@@ -184,7 +168,6 @@ def process_udp_msg(
         port: int
 ):
     msg = json.loads(msg.decode('utf-8'))
-    print(f"msg recv {msg=}")
     if msg.get('type') == 'hello':
         with client.lock:
             client.add_known_host(ip=host, name=msg.get('myname'))

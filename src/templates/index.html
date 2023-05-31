@@ -98,7 +98,7 @@
         <div id="content">
             <ul class="nav nav-tabs justify-content-center">
                 <li class="nav-item">
-                    <a aria-controls="search" aria-selected="true" class="nav-link active" data-bs-toggle="tab"
+                    <a aria-controls="search" aria-selected="false" class="nav-link active" data-bs-toggle="tab"
                        href="#search"
                        id="search-tab" role="tab">Search</a>
                 </li>
@@ -108,14 +108,14 @@
                        role="tab">Queue</a>
                 </li>
                 <li class="nav-item">
-                    <a aria-controls="songs" aria-selected="false" class="nav-link" data-bs-toggle="tab"
+                    <a aria-controls="songs" aria-selected="true" class="nav-link" data-bs-toggle="tab"
                        href="#songs"
                        id="songs-tab" role="tab">Playlist</a>
                 </li>
             </ul>
 
             <div class="tab-content">
-                <div aria-labelledby="search-tab" class="tab-pane fade show active" id="search" role="tabpanel">
+                <div aria-labelledby="search-tab" class="tab-pane fade" id="search" role="tabpanel">
                     <!-- Content of Search page -->
                     <div class="container justify-content-center" style="padding-top: 10px;">
                         <form>
@@ -142,7 +142,7 @@
                     </div>
 
                 </div>
-                <div aria-labelledby="queue-tab" class="tab-pane fade" id="queue" role="tabpanel">
+                <div aria-labelledby="queue-tab" class="tab-pane fade show active" id="queue" role="tabpanel">
                     <!-- Content of Queue page -->
                     <h3>Queue Page</h3>
                     <p>This is the content of the Queue page.</p>
