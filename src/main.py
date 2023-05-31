@@ -1,8 +1,9 @@
 import base64
 import json
-import os
-import time
+import argparse
 import socket
+import time
+import random
 import flask
 import select
 import threading
@@ -351,11 +352,13 @@ def download_song():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="SpotiLAN")
 
+    parser.add_argument("-n", "--name", type=str, default=f"User{random.randint(1,15)}")
     queue = []
     playlist = []
     curr = 0
-    client = Client(myname="karahan")
+    client = Client(myname=parser.name)
     search = Searcher(songs=config.SONGS)
 
     for p in config.SONGS.keys():
