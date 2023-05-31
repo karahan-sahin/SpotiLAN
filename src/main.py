@@ -12,13 +12,11 @@ from flask import render_template, request, jsonify
 from src.configs import config
 from src.utils.client import Client
 from src.utils.search import Searcher
-from src.utils.audio_player import AudioPlayer
 from pydub import AudioSegment, playback
 from src.utils.messages import send_message_tcp, send_message_udp, process_tcp_msg, process_udp_msg
 
 # Initialize global variables
 client: Client
-player: AudioPlayer
 search: Searcher
 app = flask.Flask(__name__)
 
@@ -38,7 +36,7 @@ def tcp_listener(
     :param port: Port number to be listened
     :param buffer_size: size of the payload in package
     """
-    global client, search, player, queue
+    global client, search, playlist, queue, curr
     print(f"Listening From {port=}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -60,7 +58,7 @@ def tcp_listener(
                         raise e
                 msg = json.loads(msg)
                 executor.submit(process_tcp_msg, msg,
-                                addr[0], client, player, search, queue)
+                                addr[0], client, search, queue, playlist, curr)
 
 
 def udp_listener(
@@ -141,7 +139,7 @@ def sync(port: int = config.SYNC_PORT) -> None:
             time.sleep(0.5)
 
 
-def actionHandle(action_type, client, player):
+def actionHandle(action_type, client):
     global ff, queue, curr
 
     # calculate delay time + send package
@@ -151,25 +149,22 @@ def actionHandle(action_type, client, player):
     print(time.time_ns())
     print(f"{agreed_time}")
 
-    if client.known_hosts:
-        name = list(client.known_hosts.keys())[0]
-        target_ip = client.known_hosts[name]
-
     if action_type == "start":
         with client.lock:
-            name = list(client.known_hosts.keys())[0]
-            target_ip = client.known_hosts[name]
-            message = {"type": action_type,
-                       "timestamp": agreed_time, "title": queue[curr]}
+            if client.known_hosts:
+                name = list(client.known_hosts.keys())[0]
+                target_ip = client.known_hosts[name]
+                message = {"type": action_type,
+                        "timestamp": agreed_time, 
+                        "title": queue[curr]}
 
-            send_message_tcp(to=target_ip,
-                             msg=message,
-                             port=config.MUSIC_PORT)
+                send_message_tcp(to=target_ip,
+                                msg=message,
+                                port=config.MUSIC_PORT)
 
-            peer_delay = np.mean(client.peer_delay, dtype=int)
+            peer_delay = np.mean(client.peer_delay, dtype=int)    
             while True:
                 if time.time_ns() - peer_delay >= agreed_time:
-                    # if time.time_ns() >= agreed_time:
                     print("Starting...", )
                     seg = AudioSegment.from_file(
                         "musics/down_from_the_sky.mp3")
@@ -179,40 +174,39 @@ def actionHandle(action_type, client, player):
 
     elif action_type == "stop":
         with client.lock:
-            name = list(client.known_hosts.keys())[0]
-            target_ip = client.known_hosts[name]
-            message = {"type": action_type,
-                       "timestamp": agreed_time, "title": queue[curr]}
+            if client.known_hosts:
+                name = list(client.known_hosts.keys())[0]
+                target_ip = client.known_hosts[name]
+                message = {"type": action_type,
+                        "timestamp": agreed_time, "title": queue[curr]}
 
-            send_message_tcp(to=target_ip,
-                             msg=message,
-                             port=config.MUSIC_PORT)
+                send_message_tcp(to=target_ip,
+                                msg=message,
+                                port=config.MUSIC_PORT)
 
             peer_delay = np.mean(client.peer_delay, dtype=int)
-
             while True:
                 if time.time_ns() - peer_delay >= agreed_time:
-                    # if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
                     break
 
     elif action_type == "next":
         with client.lock:
-            name = list(client.known_hosts.keys())[0]
-            target_ip = client.known_hosts[name]
-            curr += 1
-            message = {"type": action_type,
-                       "timestamp": agreed_time, "title": queue[curr]}
+            if client.known_hosts:
+                name = list(client.known_hosts.keys())[0]
+                target_ip = client.known_hosts[name]
+                curr += 1
+                message = {"type": action_type,
+                        "timestamp": agreed_time, "title": queue[curr]}
 
-            send_message_tcp(to=target_ip,
-                             msg=message,
-                             port=config.MUSIC_PORT)
+                send_message_tcp(to=target_ip,
+                                msg=message,
+                                port=config.MUSIC_PORT)
 
             peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
                 if time.time_ns() - peer_delay >= agreed_time:
-                    # if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
                     seg = AudioSegment.from_file(queue[curr])
@@ -221,20 +215,21 @@ def actionHandle(action_type, client, player):
 
     elif action_type == "previous":
         with client.lock:
-            name = list(client.known_hosts.keys())[0]
-            target_ip = client.known_hosts[name]
-            curr -= 1
-            message = {"type": action_type,
-                       "timestamp": agreed_time, "title": queue[curr]}
+            if client.known_hosts:
+        
+                name = list(client.known_hosts.keys())[0]
+                target_ip = client.known_hosts[name]
+                curr -= 1
+                message = {"type": action_type,
+                        "timestamp": agreed_time, "title": queue[curr]}
 
-            send_message_tcp(to=target_ip,
-                             msg=message,
-                             port=config.MUSIC_PORT)
+                send_message_tcp(to=target_ip,
+                                msg=message,
+                                port=config.MUSIC_PORT)
 
             peer_delay = np.mean(client.peer_delay, dtype=int)
             while True:
                 if time.time_ns() - peer_delay >= agreed_time:
-                    # if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
                     seg = AudioSegment.from_file(queue[curr])
@@ -252,7 +247,7 @@ def home():
 @app.route('/api/audio', methods=['POST'])
 def handle_request():
 
-    global player, client, search
+    global client, search
     global queue, playlist
     
 
@@ -261,13 +256,13 @@ def handle_request():
 
     # Perform actions based on the received action
     if action == 'play':
-        executor.submit(actionHandle, "start", client, player)
+        executor.submit(actionHandle, "start", client)
     elif action == 'pause':
-        executor.submit(actionHandle, "stop", client, player)
+        executor.submit(actionHandle, "stop", client)
     elif action == 'next':
-        executor.submit(actionHandle, "next", client, player)
+        executor.submit(actionHandle, "next", client)
     elif action == 'previous':
-        executor.submit(actionHandle, "previous", client, player)
+        executor.submit(actionHandle, "previous", client)
 
     response = {'message': 'Request received'}
     return response, 200
@@ -278,10 +273,13 @@ def get_play_list():
     global queue, playlist
     return jsonify({'song_list': playlist})
 
+
 @app.route('/api/queue-list', methods=['GET'])
 def get_queue_list():
     global queue, playlist
-    return jsonify({'queue_list': queue})
+    print(f"Current queue: {queue=}")
+    return jsonify({'queue_list': queue, 'curr': curr})
+
 
 @app.route('/api/host-list', methods=['GET'])
 def get_host_list():
@@ -304,14 +302,15 @@ def add_song():
     msg = {
         "type": "queue",
         "action": action,
-        "title": song
+        "song": song
     }
     with client.lock:
-        name = list(client.known_hosts.keys())[0]
-        target_ip = client.known_hosts[name]
-        send_message_tcp(to=target_ip,
-                         msg=msg,
-                         port=config.MUSIC_PORT)
+        if client.known_hosts:
+            name = list(client.known_hosts.keys())[0]
+            target_ip = client.known_hosts[name]
+            send_message_tcp(to=target_ip,
+                            msg=msg,
+                            port=config.MUSIC_PORT)
 
     response = {'message': 'Request received'}
     return response, 200
@@ -327,13 +326,26 @@ def search_song():
 
 @app.route('/api/download', methods=['POST'])
 def download_song():
-    global queue, playlist
+    global queue, playlist, client
     
     data = request.get_json()
     url = data.get('url')
     status = search.downloadSong(url, './musics/')
     playlist.append(status)
     
+    msg = {
+        "type": "download",
+        "link": url,
+    }
+    with client.lock:
+        if client.known_hosts:
+        
+            name = list(client.known_hosts.keys())[0]
+            target_ip = client.known_hosts[name]
+            send_message_tcp(to=target_ip,
+                            msg=msg,
+                            port=config.MUSIC_PORT)
+
     response = {'message': status}
     return response, 200
 
@@ -343,8 +355,7 @@ if __name__ == '__main__':
     queue = []
     playlist = []
     curr = 0
-    client = Client(myname="daglar")
-    player = AudioPlayer()
+    client = Client(myname="karahan")
     search = Searcher(songs=config.SONGS)
 
     for p in config.SONGS.keys():

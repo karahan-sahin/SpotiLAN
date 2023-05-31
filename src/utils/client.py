@@ -4,7 +4,7 @@ import time
 from typing import Dict
 import threading
 import platform
-
+from src.configs import config
 
 class Client:
     """Client class contains the users private IP address, name and known hosts as attributes"""
@@ -15,7 +15,7 @@ class Client:
         self.__known_hosts: dict = dict()
         self.lock: threading.Lock = threading.Lock()
         self.peer_sync_turn: bool = False
-        self.peer_delay: list = []
+        self.peer_delay: list = [0] * config.DELAY_WINDOW
 
     @property
     def myip(self) -> str:

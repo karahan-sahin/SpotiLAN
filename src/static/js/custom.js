@@ -66,12 +66,14 @@ function updateQueueList() {
         .then(function (data) {
             var songListContainer = document.getElementById('queue-list-container');
             songListContainer.innerHTML = '';
-
-            data.queue_list.forEach(function (song) {
+            
+            data.queue_list.forEach(function (song, idx) {
+                var displayType = "text-secondary"
+                if (data.curr === idx) {displayType = "text-primary"}
                 var songCard = `
                         <div class="col-md-12 mb-4" style="padding-top: 5px" >
                             <div class="card h-100 rounded p-3" style="flex-direction: row;" >
-                                <div class="card-body">
+                                <div class="card-body ${displayType}">
                                     <h5 class="card-title">${song}</h5>
                                 </div>
                                 <button type="button" class="btn add remove-btn btn-primary" data-url=${song} style="margin-right: 50px;align-self: center;">➖</button>

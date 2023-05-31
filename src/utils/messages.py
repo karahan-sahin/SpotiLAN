@@ -6,7 +6,6 @@ import flask
 import time
 import numpy as np
 from src.utils.client import Client
-from src.utils.audio_player import AudioPlayer
 from src.utils.search import Searcher
 import src.configs.config as config
 
@@ -61,9 +60,10 @@ def process_tcp_msg(
         msg: dict,
         host: str,
         client: Client = None,
-        player: AudioPlayer = None,
         searcher: Searcher = None,
-        queue: list = None
+        queue: list = None,
+        playlist: list = None,
+        curr: int = None,
 ):
     
     global ff
@@ -80,6 +80,7 @@ def process_tcp_msg(
     
     elif msg["type"] == "start":
         # START CURRENT SONG
+        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
@@ -87,7 +88,6 @@ def process_tcp_msg(
             print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                #if time.time_ns() >= agreed_time:
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
@@ -95,6 +95,7 @@ def process_tcp_msg(
                     break    
                         
     elif msg["type"] == "stop":
+        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
@@ -102,12 +103,12 @@ def process_tcp_msg(
             print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                #if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
                     break      
                 
     elif msg["type"] == "next":
+        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
@@ -115,9 +116,12 @@ def process_tcp_msg(
             print("Peer delay", peer_delay)
             while True:
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
-                #if time.time_ns() >= agreed_time:
                     print("Stopping song...")
                     ff.stop()
+                    if curr == (len(playlist) -1):
+                        curr = 0
+                    else:
+                        curr += 1     
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
@@ -125,6 +129,7 @@ def process_tcp_msg(
                     break  
                 
     elif msg["type"] == "previous":
+        print(f"tcp recv {msg=}")
         with client.lock:
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
@@ -134,6 +139,10 @@ def process_tcp_msg(
                 if int(int(time.time_ns())) >= agreed_time + int(peer_delay):
                     print("Stopping song...")
                     ff.stop()
+                    if curr == 0:
+                        curr -= (len(playlist) -1)
+                    else:
+                        curr -= 1            
                     print("Starting...", )
                     seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
@@ -141,6 +150,7 @@ def process_tcp_msg(
                     break  
 
     elif msg["type"] == "queue":
+        print(f"tcp recv {msg=}")
         action = msg.get("action")
         song_name = msg.get("song")
         if action == "add": 
@@ -151,6 +161,7 @@ def process_tcp_msg(
     elif msg["type"] == "download":
         url = msg.get("link")
         fname = searcher.downloadSong(url, "./musics/")
+        playlist.append(fname)    
     
     elif msg["type"] == "sync":
         timestamp = msg.get("timestamp")
