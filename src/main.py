@@ -162,9 +162,9 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
+            seg = AudioSegment.from_file(queue[curr])
             while True:
                 if time.time_ns() >= agreed_time:
-                    seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
                     break
 
@@ -202,10 +202,10 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
+            seg = AudioSegment.from_file(queue[curr])
             while True:
                 if time.time_ns()>= agreed_time:
                     ff.stop()
-                    seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
                     break
 
@@ -226,10 +226,10 @@ def actionHandle(action_type, client):
                                  msg=message,
                                  port=config.MUSIC_PORT)
 
+            seg = AudioSegment.from_file(queue[curr])
             while True:
                 if time.time_ns()>= agreed_time:
                     ff.stop()
-                    seg = AudioSegment.from_file(queue[curr])
                     ff = playback._play_with_simpleaudio(seg)
                     break
 

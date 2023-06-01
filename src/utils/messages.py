@@ -84,9 +84,9 @@ def process_tcp_msg(
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
+            seg = AudioSegment.from_file(title)
             while True:
                 if time.time_ns() >= agreed_time - int(peer_delay):
-                    seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     break
 
@@ -105,6 +105,7 @@ def process_tcp_msg(
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
+            seg = AudioSegment.from_file(title)
             while True:
                 if time.time_ns() >= agreed_time - int(peer_delay):
                     ff.stop()
@@ -113,7 +114,6 @@ def process_tcp_msg(
                             curr = 0
                         else:
                             curr += 1
-                    seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     break
 
@@ -122,6 +122,7 @@ def process_tcp_msg(
             agreed_time = int(msg.get("timestamp"))
             title = msg.get("title")
             peer_delay = np.mean(client.peer_delay)
+            seg = AudioSegment.from_file(title)
             while True:
                 if time.time_ns() >= agreed_time - int(peer_delay):
                     ff.stop()
@@ -131,7 +132,6 @@ def process_tcp_msg(
                         else:
                             curr -= 1
 
-                    seg = AudioSegment.from_file(title)
                     ff = playback._play_with_simpleaudio(seg)
                     break
 
