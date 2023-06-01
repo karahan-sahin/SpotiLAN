@@ -236,9 +236,9 @@ def actionHandle(action_type, client):
 
 @app.route('/', methods=['GET'])
 def home():
-    global queue, playlist
+    global queue, playlist, client
     # if client.name:
-    return render_template('index.html', song_list=playlist, queue_list=queue)
+    return render_template('index.html', song_list=playlist, queue_list=queue, me=client.myname)
 
 
 @app.route('/api/audio', methods=['POST'])
